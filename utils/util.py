@@ -305,17 +305,13 @@ def load_weight(model, ckpt):
 def set_params(model, decay):
     p1 = []
     p2 = []
-    norm = tuple(v for k, v in torch.nn.__dict__.items() if "Norm" in k)
-    for m in model.modules():
-        for n, p in m.named_parameters(recurse=0):
-            if not p.requires_grad:
-                continue
-            if n == "bias":  # bias (no decay)
-                p1.append(p)
-            elif n == "weight" and isinstance(m, norm):  # weight (no decay)
-                p1.append(p)
-            else:
-                p2.append(p)  # weight (with decay)
+    for name, param in model.named_parameters():
+        if not param.requires_grad:
+            continue
+        if param.ndim <= 1 or name.endswith(".bias"):
+            p1.append(param)
+        else:
+            p2.append(param)
     return [{'params': p1, 'weight_decay': 0.00},
             {'params': p2, 'weight_decay': decay}]
 

@@ -43,13 +43,11 @@ class Residual(torch.nn.Module):
     def __init__(self, ch, add=True):
         super().__init__()
         self.add_m = add
-        self.conv1 = Conv(ch, ch, k=3, p=1)
-        self.conv2 = Conv(ch, ch, k=3, p=1)
+        self.res_m = torch.nn.Sequential(Conv(ch, ch, k=3, p=1),
+                                         Conv(ch, ch, k=3, p=1))
 
     def forward(self, x):
-        y = self.conv1(x)
-        y = self.conv2(y)
-        return x + y if self.add_m else y
+        return self.res_m(x) + x if self.add_m else self.res_m(x)
 
 
 class CSP(torch.nn.Module):

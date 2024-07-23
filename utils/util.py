@@ -1,8 +1,8 @@
 import copy
-import math
 import random
 from time import time
 
+import math
 import numpy
 import torch
 import torchvision
@@ -517,6 +517,43 @@ class Assigner(torch.nn.Module):
         target_scores = target_scores * norm_align_metric
 
         return target_bboxes, target_scores, fg_mask.bool()
+
+
+class QFL(torch.nn.Module):
+    def __init__(self, beta=2.0):
+        super().__init__()
+        self.beta = beta
+        self.bce_loss = torch.nn.BCEWithLogitsLoss(reduction='none')
+
+    def forward(self, outputs, targets):
+        bce_loss = self.bce_loss(outputs, targets)
+        return torch.pow(torch.abs(targets - outputs.sigmoid()), self.beta) * bce_loss
+
+
+class VFL(torch.nn.Module):
+    def __init__(self, alpha=0.75, gamma=2.00, iou_weighted=True):
+        super().__init__()
+        assert alpha >= 0.0
+        self.alpha = alpha
+        self.gamma = gamma
+        self.iou_weighted = iou_weighted
+        self.bce_loss = torch.nn.BCEWithLogitsLoss(reduction='none')
+
+    def forward(self, outputs, targets):
+        assert outputs.size() == targets.size()
+        targets = targets.type_as(outputs)
+
+        if self.iou_weighted:
+            focal_weight = targets * (targets > 0.0).float() + \
+                           self.alpha * (outputs.sigmoid() - targets).abs().pow(self.gamma) * \
+                           (targets <= 0.0).float()
+
+        else:
+            focal_weight = (targets > 0.0).float() + \
+                           self.alpha * (outputs.sigmoid() - targets).abs().pow(self.gamma) * \
+                           (targets <= 0.0).float()
+
+        return self.bce_loss(outputs, targets) * focal_weight
 
 
 class BoxLoss(torch.nn.Module):

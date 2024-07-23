@@ -182,7 +182,7 @@ def test(args, params, model=None):
 
     if model is None:
         model = torch.load(f='./weights/best.pt', map_location='cuda')
-        model = model['model'].float()
+        model = model['model'].float().fuse()
 
     model.half()
     model.eval()

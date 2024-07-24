@@ -556,6 +556,29 @@ class VFL(torch.nn.Module):
         return self.bce_loss(outputs, targets) * focal_weight
 
 
+class FocalLoss(torch.nn.Module):
+    def __init__(self, alpha=0.25, gamma=1.5):
+        super().__init__()
+        self.alpha = alpha
+        self.gamma = gamma
+        self.bce_loss = torch.nn.BCEWithLogitsLoss(reduction='none')
+
+    def forward(self, outputs, targets):
+        loss = self.bce_loss(outputs, targets)
+
+        if self.alpha > 0:
+            alpha_factor = targets * self.alpha + (1 - targets) * (1 - self.alpha)
+            loss *= alpha_factor
+
+        if self.gamma > 0:
+            outputs_sigmoid = outputs.sigmoid()
+            p_t = targets * outputs_sigmoid + (1 - targets) * (1 - outputs_sigmoid)
+            gamma_factor = (1.0 - p_t) ** self.gamma
+            loss *= gamma_factor
+
+        return loss
+
+
 class BoxLoss(torch.nn.Module):
     def __init__(self, dfl_ch):
         super().__init__()

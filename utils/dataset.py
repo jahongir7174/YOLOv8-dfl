@@ -47,7 +47,6 @@ class Dataset(data.Dataset):
 
             # Resize
             image, ratio, pad = resize(image, self.input_size, self.augment)
-            shapes = (shape[0], shape[1]), ((h / shape[0], w / shape[1]), pad)  # for COCO mAP rescaling
             label = self.labels[index].copy()
             if label.size:
                 label[:, 1:] = wh2xy(label[:, 1:], ratio[0] * w, ratio[1] * h, pad[0], pad[1])
@@ -87,7 +86,7 @@ class Dataset(data.Dataset):
         sample = image.transpose((2, 0, 1))[::-1]
         sample = numpy.ascontiguousarray(sample)
 
-        return torch.from_numpy(sample), target_cls, target_box, torch.zeros(nl), self.filenames[index], shapes
+        return torch.from_numpy(sample), target_cls, target_box, torch.zeros(nl)
 
     def __len__(self):
         return len(self.filenames)
@@ -177,7 +176,7 @@ class Dataset(data.Dataset):
 
     @staticmethod
     def collate_fn(batch):
-        samples, cls, box, indices, paths, shapes = zip(*batch)
+        samples, cls, box, indices = zip(*batch)
 
         cls = torch.cat(cls, dim=0)
         box = torch.cat(box, dim=0)
@@ -190,7 +189,7 @@ class Dataset(data.Dataset):
         targets = {'cls': cls,
                    'box': box,
                    'idx': indices}
-        return torch.stack(samples, dim=0), targets, paths, shapes
+        return torch.stack(samples, dim=0), targets
 
     @staticmethod
     def load_label(filenames):

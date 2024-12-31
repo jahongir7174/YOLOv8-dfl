@@ -167,10 +167,7 @@ def train(args, params):
         util.strip_optimizer('./weights/best.pt')  # strip optimizers
         util.strip_optimizer('./weights/last.pt')  # strip optimizers
 
-    torch.cuda.empty_cache()
 
-
-@torch.no_grad()
 def test(args, params, model=None):
     filenames = []
     with open(f'{data_dir}/val2017.txt') as f:
@@ -208,7 +205,8 @@ def test(args, params, model=None):
         _, _, h, w = samples.shape  # batch-size, channels, height, width
         scale = torch.tensor((w, h, w, h)).cuda()
         # Inference
-        outputs = model(samples)
+        with torch.no_grad():
+            outputs = model(samples)
         # NMS
         outputs = util.non_max_suppression(outputs)
         # Metrics
@@ -269,7 +267,7 @@ def main():
     parser.add_argument('--local_rank', default=0, type=int)
     parser.add_argument('--epochs', default=600, type=int)
     parser.add_argument('--train', action='store_true')
-    parser.add_argument('--test', default=True, action='store_true')
+    parser.add_argument('--test', action='store_true')
 
     args = parser.parse_args()
 
@@ -297,6 +295,11 @@ def main():
         train(args, params)
     if args.test:
         test(args, params)
+
+    # Clean
+    if args.distributed:
+        torch.distributed.destroy_process_group()
+    torch.cuda.empty_cache()
 
 
 if __name__ == "__main__":
